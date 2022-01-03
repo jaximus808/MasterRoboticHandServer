@@ -3,9 +3,18 @@ const User = require("./models/UserObject");
 const Arm = require("./models/ArmObject");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const {registe50rValidation, loginValidation }= require("./validation")
+const {registerValidation, loginValidation }= require("./validation")
 const verifyUserToken = require("./userTokenVerify")
-
+const verifyArmPassword = require("./armPassVerify")
+router.get("/test", (req, res) =>
+{
+    console.log("cock")
+    res.send("receive ");
+})
+router.post("/test", (req, res)=>
+{
+    console.log("dog");
+})
 router.post("/api/user/loginUser", async(req,res) =>
 {
     console.log(req.body)
@@ -66,6 +75,36 @@ router.post("/api/user/accountDetails", verifyUserToken, async(req, res) =>
         res.send({error:true, message:"Something went wrong"})
     }
     
+})
+
+router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
+{
+    let ip = req.body.ip;
+    const splitIp = ip.split(".");
+    if(splitIp.length != 4) return res.status(400).send({error:true});
+    for(let i = 0; i < 4; i++)
+    {
+        if(parseInt(splitIp[i]) <= 255 || parseInt(splitIp[i]) >= 0 ) return res.status(400).send({error:true})
+    }
+    if(parseInt(req.body.port) < 0) return res.status(400).send({error:true});
+    const arm = new Arm(
+        {
+            id: req.body.id,
+            ip: req.body.ip, 
+            password: req.body.password,
+            port: req.body.port
+        }
+    )
+
+    try
+    {
+        await arm.save()
+        res.send(200).send({error:false})
+    }
+    catch
+    {
+        res.send(400).send({error:true})
+    }
 })
 
 module.exports = router; 
