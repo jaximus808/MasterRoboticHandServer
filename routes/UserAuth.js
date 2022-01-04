@@ -81,29 +81,32 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
 {
     let ip = req.body.ip;
     const splitIp = ip.split(".");
-    if(splitIp.length != 4) return res.status(400).send({error:true});
+    if(splitIp.length != 4) return res.status(400).send({error:true,existing:false });
+    
     for(let i = 0; i < 4; i++)
     {
-        if(parseInt(splitIp[i]) <= 255 || parseInt(splitIp[i]) >= 0 ) return res.status(400).send({error:true})
+        if(parseInt(splitIp[i]) >= 255 && parseInt(splitIp[i]) <= 0 ) return res.status(400).send({error:true,existing:false })
     }
-    if(parseInt(req.body.port) < 0) return res.status(400).send({error:true});
+    if(parseInt(req.body.port) < 0) return res.status(400).send({error:true,existing:false });
+    const existingArmId = await Arm.findOne({id: req.body.id})
+    if(existingArmId) return res.status(400).send({error:true,existing:true });
     const arm = new Arm(
         {
             id: req.body.id,
             ip: req.body.ip, 
-            password: req.body.password,
+            password: "test",
             port: req.body.port
         }
     )
-
     try
     {
         await arm.save()
-        res.send(200).send({error:false})
+        res.status(200).send({error:false,existing:false })
     }
-    catch
+    catch(e)
     {
-        res.send(400).send({error:true})
+        console.log(e);
+        res.status(400).send({error:true,existing:false })
     }
 })
 

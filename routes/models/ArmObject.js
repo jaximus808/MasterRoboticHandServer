@@ -25,10 +25,10 @@ const Arm = new Schema({
     },
     port:
     {
-        type: String, 
+        type: Number, 
         required: true, 
-        min: 6, 
-        max: 1024
+        min: 0, 
+        max: 65535
     },
     date:
     {
