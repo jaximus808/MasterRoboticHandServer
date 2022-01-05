@@ -136,7 +136,7 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
             ip: req.body.ip, 
             password: "test",
             port: req.body.port,
-            connectedIp: fleetServers[bestServer].ip, 
+            connectedFleetIP: fleetServers[bestServer].ip, 
             connectedFleetPort: fleetServers[bestServer].port 
         }
     )
