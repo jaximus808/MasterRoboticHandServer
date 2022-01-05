@@ -30,6 +30,22 @@ const Arm = new Schema({
         min: 0, 
         max: 65535
     },
+    connectedFleetIP:
+    {
+        type: String,
+        required: true, 
+        min: 0,
+        max: 255
+    }
+    ,
+    connectedFleetPort:
+    {
+        type: Number,
+        required: true,
+        min: 0, 
+        max: 65535
+    }
+    ,
     date:
     {
         type:Date,

@@ -6,6 +6,12 @@ const jwt = require("jsonwebtoken");
 const {registerValidation, loginValidation }= require("./validation")
 const verifyUserToken = require("./userTokenVerify")
 const verifyArmPassword = require("./armPassVerify")
+const {JsonDB} = require("node-json-db")
+const { Config } = require("node-json-db/dist/lib/JsonDBConfig")
+
+const db = new JsonDB(new Config("fleetServers", true, false, "/"))
+
+
 router.get("/test", (req, res) =>
 {
     console.log("cock")
@@ -28,6 +34,8 @@ router.post("/api/user/loginUser", async(req,res) =>
     if(!validPass) return res.status(400).send({error:true,message:"email or pass incorrect"})
     
     const token = jwt.sign({_id: emailExist._id},process.env.TOKEN_SECRET);
+    
+    ///db.push("/fleetServers", {ip:"75.85.46.243",port:8000, active:true}, false)
     res.send({error:false, message:token}); 
 })
 
@@ -35,6 +43,7 @@ router.post("/api/user/createUser", async(req, res) =>
 {
     console.log("register requesting here ");
     console.log(req.body)
+    
     const {error} = registerValidation(req.body);
     if(error) return res.status(400).send({error:true, message: error.details[0].message});
     const emailExist = await User.findOne({email: req.body.email});
@@ -54,6 +63,7 @@ router.post("/api/user/createUser", async(req, res) =>
         const savedUser = await user.save();
         const token = jwt.sign({_id: savedUser._id}, process.env.TOKEN_SECRET);
         res.send({error: false, message: token});
+        
     }
     catch(error)
     {
@@ -81,32 +91,65 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
 {
     let ip = req.body.ip;
     const splitIp = ip.split(".");
-    if(splitIp.length != 4) return res.status(400).send({error:true,existing:false });
+    if(splitIp.length != 4) return res.status(400).send({error:true,existing:false,message:"" });
     
     for(let i = 0; i < 4; i++)
     {
-        if(parseInt(splitIp[i]) >= 255 && parseInt(splitIp[i]) <= 0 ) return res.status(400).send({error:true,existing:false })
+        if(parseInt(splitIp[i]) >= 255 && parseInt(splitIp[i]) <= 0 ) return res.status(400).send({error:true,existing:false ,message:""})
     }
-    if(parseInt(req.body.port) < 0) return res.status(400).send({error:true,existing:false });
+    if(parseInt(req.body.port) < 0) return res.status(400).send({error:true,existing:false,message:"" });
+    
+    //now need to look for a fleet server: will make a better algorithm later 
+    var fleetServers = db.getData("/fleetServers");
+    var minConnected = 20000000;
+    var bestServer; 
+    for(let i = 0; i < fleetServers.length; i++)
+    {
+        if(fleetServers[i].connected < minConnected)
+        {
+            bestServer = i; 
+        }
+    }
     const existingArmId = await Arm.findOne({id: req.body.id})
-    if(existingArmId) return res.status(400).send({error:true,existing:true });
+    if(existingArmId)
+    {
+        try
+        {
+            existingArmId.connectedFleetIP = fleetServers[bestServer].ip
+            existingArmId.connectedFleetPort = fleetServers[bestServer].port   
+            await existingArmId.save();
+            return res.status(400).send({error:true,existing:true ,message:fleetServers[bestServer].ip, port:fleetServers[bestServer].port    });
+    
+        }
+        catch(e)
+        {
+            console.log(e);
+            res.status(400).send({error:true,existing:false ,message:""})
+        }
+    }
+    
+    console.log("pog")
+
     const arm = new Arm(
         {
             id: req.body.id,
             ip: req.body.ip, 
             password: "test",
-            port: req.body.port
+            port: req.body.port,
+            connectedIp: fleetServers[bestServer].ip, 
+            connectedFleetPort: fleetServers[bestServer].port 
         }
     )
     try
     {
         await arm.save()
-        res.status(200).send({error:false,existing:false })
+        res.status(200).send({error:false,existing:false, message:fleetServers[bestServer].ip, port:fleetServers[bestServer].port })
+        
     }
     catch(e)
     {
         console.log(e);
-        res.status(400).send({error:true,existing:false })
+        res.status(400).send({error:true,existing:false ,message:""})
     }
 })
 

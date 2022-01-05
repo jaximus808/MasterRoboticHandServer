@@ -6,7 +6,7 @@ const app = express();
 const mongoose = require("mongoose");
 const  events  = require('events');
 const Authentication = require("./routes/UserAuth");
-const util = require("util")
+
 app.use(express.json());
 app.use(express.urlencoded({
     extended:false
