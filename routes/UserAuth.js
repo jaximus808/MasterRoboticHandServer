@@ -151,7 +151,7 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
     console.log("pog")
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash("test", salt);
+    const hashedPassword = await bcrypt.hash(req.body.armPass, salt);
 
     const arm = new Arm(
         {
@@ -159,7 +159,7 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
             ip: req.body.ip, 
             password: hashedPassword,
             port: req.body.port,
-            connectedIp: fleetServers[bestServer].ip, 
+            connectedFleetIP: fleetServers[bestServer].ip, 
             connectedFleetPort: fleetServers[bestServer].port,
             connected: false //connected will be sent from the fleet server
         }
