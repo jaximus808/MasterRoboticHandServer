@@ -44,8 +44,12 @@ const Arm = new Schema({
         required: true,
         min: 0, 
         max: 65535
-    }
-    ,
+    },
+    connected:
+    {
+        type:Boolean,
+        required: true, 
+    },
     date:
     {
         type:Date,

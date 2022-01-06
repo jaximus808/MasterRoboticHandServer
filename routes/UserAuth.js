@@ -14,13 +14,33 @@ const db = new JsonDB(new Config("fleetServers", true, false, "/"))
 
 router.get("/test", (req, res) =>
 {
-    console.log("cock")
+    console.log("pong")
     res.send("receive ");
 })
 router.post("/test", (req, res)=>
 {
     console.log("dog");
 })
+
+router.post("/api/loginArm", async(req, res) =>
+{
+    console.log(req.body);
+    //asks for id and username; 
+
+    const ArmMatch = await Arm.findOne({id: req.body.id});
+    if(!ArmMatch) res.status(400).send({error:true, message:"Wrong id or password"});
+
+    const validPass = await bcrypt.compare(req.body.password, ArmMatch.password);
+    if(!validPass) return res.status(400).send({error:true, message:"Wrong id or password"})
+
+    if(!ArmMatch.connected) return res.status(400).send({error:true, message:"Arm is not online" });
+
+    //if everything good then send the ip and port of the server
+    
+    return res.send({error:false, message:ArmMatch.connectedIp, port: ArmMatch.connectedFleetPort});
+
+})
+
 router.post("/api/user/loginUser", async(req,res) =>
 {
     console.log(req.body)
@@ -130,14 +150,18 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
     
     console.log("pog")
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("test", salt);
+
     const arm = new Arm(
         {
             id: req.body.id,
             ip: req.body.ip, 
-            password: "test",
+            password: hashedPassword,
             port: req.body.port,
             connectedIp: fleetServers[bestServer].ip, 
-            connectedFleetPort: fleetServers[bestServer].port 
+            connectedFleetPort: fleetServers[bestServer].port,
+            connected: false //connected will be sent from the fleet server
         }
     )
     try
