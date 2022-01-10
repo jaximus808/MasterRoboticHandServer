@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const {registerValidation, loginValidation }= require("./validation")
 const verifyUserToken = require("./userTokenVerify")
 const verifyArmPassword = require("./armPassVerify")
+const verifyFleetServerPassword = require("./serverFleetVerify")
 const {JsonDB} = require("node-json-db")
 const { Config } = require("node-json-db/dist/lib/JsonDBConfig")
 
@@ -107,6 +108,19 @@ router.post("/api/user/accountDetails", verifyUserToken, async(req, res) =>
     
 })
 
+router.post("/api/user/connectArm",verifyUserToken,async(req,res) =>
+{
+    console.log(req.body)
+    const armExist = await Arm.findOne({id:req.body.id})
+    if(!armExist) return res.status(400).send({error:true, message:"id or password incorrect"}); 
+
+    const validPass = await bcrypt.compare(req.body.password,armExist.password )
+    if(!validPass) return res.status(400).send({error:true, message:"id or password incorrect"});
+
+    if(!armExist.connected) return res.status(400).send({error:true, message:"Arm is not connected, connect arm or try again"})
+    res.send({error:false,message:"connecting", ip:armExist.connectedFleetIP, port: armExist.connectedFleetPort});
+})
+
 router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
 {
     let ip = req.body.ip;
@@ -131,10 +145,12 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
         }
     }
     const existingArmId = await Arm.findOne({id: req.body.id})
+    //connected will be send from the fleet server
     if(existingArmId)
     {
         try
         {
+            
             existingArmId.connectedFleetIP = fleetServers[bestServer].ip
             existingArmId.connectedFleetPort = fleetServers[bestServer].port   
             await existingArmId.save();
@@ -175,6 +191,78 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
         console.log(e);
         res.status(400).send({error:true,existing:false ,message:""})
     }
+})
+
+router.post("/server/auth/disconnectArmClient", verifyArmPassword,verifyFleetServerPassword, async(req, res) =>
+{
+    const findArm = await Arm.findOne({id: req.body.id}); 
+    if(!findArm)  return res.status(400).send({error:true,message:"Something went wrong"});
+    
+    if(!findArm.connected) return res.status(400).send({error:true, message:"Arm is not connected to a fleet server"});
+
+    try
+    {
+        findArm.connected = false; 
+        findArm.save();
+        res.send({error:false, message:"Success"})
+    }
+    catch(e)
+    {
+        
+        res.status(400).send({error:true, message:"Something went wrong"})
+    }
+
+})
+
+router.post("/server/auth/connectedArmClient",verifyFleetServerPassword, verifyArmPassword, async(req, res) =>
+{
+    const findArm = await Arm.findOne({id: req.body.id}); 
+    if(!findArm)  return res.status(400).send({error:true,message:"Something went wrong"});
+    
+    if(findArm.connected) return res.status(400).send({error:true, message:"Arm is already connected to a fleet server"});
+
+    try
+    {
+        findArm.connected = true; 
+        findArm.save();
+        res.send({error:false, message:"Success"})
+    }
+    catch(e)
+    {
+        
+        res.status(400).send({error:true, message:"Something went wrong"})
+    }
+
+})
+router.post("/server/auth/disconnectFleet",verifyFleetServerPassword, async(req, res) =>
+{
+    console.log(req.body.delete)
+    const basedString = req.body.delete;
+    const armUsers = basedString.split(",");
+    for(let i = 0; i < armUsers.length-1; i++)
+    {
+        
+        
+        try{
+            console.log(armUsers[i]);
+            const arm = await Arm.findOne({id: armUsers[i]});
+            arm.connected = false;
+            arm.save(); 
+        }
+        catch(e)
+        {
+            console.log(e);
+        }
+    }
+    res.send({error:false, message:"success"});
+})
+
+router.post("/server/auth/connectedClient", verifyUserToken, async(req, res)=>
+{
+    const getAccount = await User.findOne({_id: req.user._id}); 
+    if(!getAccount) return res.status(400).send({error:true,message:"Something went wrong"});
+
+   res.send({error:false,message:"Something went wrong"}); 
 })
 
 module.exports = router; 
