@@ -12,16 +12,17 @@ const { Config } = require("node-json-db/dist/lib/JsonDBConfig")
 
 const db = new JsonDB(new Config("fleetServers", true, false, "/"))
 
-
-router.get("/test", (req, res) =>
-{
-    console.log("pong")
-    res.send("receive ");
-})
-router.post("/test", (req, res)=>
-{
-    console.log("dog");
-})
+function isNumber(char) {
+    if (typeof char !== 'string') {
+      return false;
+    }
+  
+    if (char.trim() === '') {
+      return false;
+    }
+  
+    return !isNaN(char);
+  }
 
 router.post("/api/loginArm", async(req, res) =>
 {
@@ -193,6 +194,44 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
     }
 })
 
+router.post("/server/auth/registerFleet", verifyFleetServerPassword, async(req ,res)=>
+{
+    const fleets = db.getData("/fleetServers");
+    let unfound = true; 
+    const unchnagedIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    let ip;
+    for(let i = 0; i < unchnagedIp.length; i++)
+    {
+        if(isNumber(unchnagedIp[i]))
+        {
+            ip=unchnagedIp.slice(i,unchnagedIp.length);
+            break;
+        }
+
+    }
+    for(let i = 0; i < fleets.length; i++)
+    {
+        if(ip === fleets[i].ip)
+        {
+            unfound = false;
+            fleets[i].active = true;  
+            break; 
+        }
+    }
+    if(unfound)
+    {
+        fleets.push({
+            "ip" : ip,
+            "port" : parseInt(req.body.port),
+            "active" : true,
+            "connected" : 0
+        })
+        db.push("/fleetServers",fleets)
+    }
+
+    res.send({error:false, message:"success"});
+})
+
 router.post("/server/auth/disconnectArmClient", verifyArmPassword,verifyFleetServerPassword, async(req, res) =>
 {
     const findArm = await Arm.findOne({id: req.body.id}); 
@@ -254,6 +293,29 @@ router.post("/server/auth/disconnectFleet",verifyFleetServerPassword, async(req,
             console.log(e);
         }
     }
+    const unchnagedIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    let ip;
+    for(let i = 0; i < unchnagedIp.length; i++)
+    {
+        if(isNumber(unchnagedIp[i]))
+        {
+            ip=unchnagedIp.slice(i,unchnagedIp.length);
+            break;
+        }
+
+    }
+    const fleets = db.getData("/fleetServers");
+    for(let i = 0; i < fleets.length; i++)
+    {
+        if(ip === fleets[i].ip)
+        {
+            fleets[i].active = false;
+            break; 
+        }
+    }
+    console.log(fleets)
+    db.push("/fleetServers",fleets)
+    
     res.send({error:false, message:"success"});
 })
 
