@@ -58,6 +58,7 @@ router.post("/api/user/loginUser", async(req,res) =>
     const token = jwt.sign({_id: emailExist._id},process.env.TOKEN_SECRET);
     
     ///db.push("/fleetServers", {ip:"75.85.46.243",port:8000, active:true}, false)
+    console.log("nice")
     res.send({error:false, message:token}); 
 })
 
@@ -146,6 +147,7 @@ router.post("/api/arm/register", verifyArmPassword, async(req, res)=>
         }
     }
     const existingArmId = await Arm.findOne({id: req.body.id})
+    console.log("nice")
     //connected will be send from the fleet server
     if(existingArmId)
     {
@@ -264,6 +266,7 @@ router.post("/server/auth/connectedArmClient",verifyFleetServerPassword, verifyA
     {
         findArm.connected = true; 
         findArm.save();
+        console.log("bruh")
         res.send({error:false, message:"Success"})
     }
     catch(e)
@@ -273,6 +276,8 @@ router.post("/server/auth/connectedArmClient",verifyFleetServerPassword, verifyA
     }
 
 })
+
+
 router.post("/server/auth/disconnectFleet",verifyFleetServerPassword, async(req, res) =>
 {
     console.log(req.body.delete)
